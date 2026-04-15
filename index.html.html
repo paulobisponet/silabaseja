@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sílabas Mágicas — Prof. Paulo Bispo</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c1: #ff6b6b; --c2: #4ecdc4; --c3: #ffe66d; --c4: #a29bfe; --c5: #fd79a8;
+  --dark: #0d0d1a; --dark2: #12122a; --dark3: #1a1a3e;
+  --gold: #f9ca24; --silver: #b2bec3; --bronze: #e17055;
+  --radius: 18px; --shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; overflow:hidden; background:var(--dark); font-family:'Nunito',sans-serif; }
+
+/* ─── SCREENS ─── */
+.screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transform:scale(0.97); transition:opacity .35s ease, transform .35s ease; overflow-y:auto; padding:16px; }
+.screen.active { opacity:1; pointer-events:all; transform:scale(1); }
+
+/* ─── PARTICLES BG ─── */
+#canvas-bg { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.screen > * { position:relative; z-index:1; }
+
+/* ─── TYPOGRAPHY ─── */
+.f1 { font-family:'Fredoka One',cursive; }
+.txt-gold { color:var(--gold); }
+.txt-w { color:#fff; }
+.txt-muted { color:rgba(255,255,255,.5); }
+
+/* ─── GLASS CARD ─── */
+.glass { background:rgba(255,255,255,.06); backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.12); border-radius:var(--radius); }
+
+/* ─── BUTTONS ─── */
+.btn { font-family:'Fredoka One',cursive; border:none; border-radius:50px; cursor:pointer;
+  transition:transform .15s, box-shadow .15s, filter .15s; user-select:none; }
+.btn:active { transform:scale(.94); }
+.btn-primary { background:linear-gradient(135deg,#ff6b6b,#ee5a24); color:#fff; padding:16px 40px; font-size:20px;
+  box-shadow:0 6px 24px rgba(255,107,107,.45); }
+.btn-primary:hover { filter:brightness(1.1); box-shadow:0 10px 32px rgba(255,107,107,.55); }
+.btn-teal { background:linear-gradient(135deg,#4ecdc4,#00b894); color:#fff; padding:14px 32px; font-size:18px;
+  box-shadow:0 6px 20px rgba(78,205,196,.4); }
+.btn-gold { background:linear-gradient(135deg,#f9ca24,#f0932b); color:#333; padding:14px 32px; font-size:18px;
+  box-shadow:0 6px 20px rgba(249,202,36,.4); }
+.btn-purple { background:linear-gradient(135deg,#a29bfe,#6c5ce7); color:#fff; padding:14px 32px; font-size:18px;
+  box-shadow:0 6px 20px rgba(162,155,254,.4); }
+.btn-small { padding:9px 22px; font-size:15px; }
+.btn-ghost { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; padding:10px 24px; font-size:15px; }
+.btn-ghost:hover { background:rgba(255,255,255,.14); }
+
+/* ─── HEADER BAR ─── */
+.hbar { width:100%; max-width:760px; display:flex; align-items:center; justify-content:space-between;
+  padding:12px 18px; border-radius:var(--radius); margin-bottom:14px; }
+
+/* ─── LEVEL TABS ─── */
+.level-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.lvl-btn { font-family:'Fredoka One',cursive; font-size:14px; padding:8px 18px; border-radius:50px; border:2px solid;
+  cursor:pointer; transition:all .25s; background:transparent; }
+.lvl-btn.easy { border-color:var(--c2); color:var(--c2); }
+.lvl-btn.easy.on { background:var(--c2); color:#fff; }
+.lvl-btn.mid { border-color:var(--c3); color:#cca800; }
+.lvl-btn.mid.on { background:var(--c3); color:#333; }
+.lvl-btn.hard { border-color:var(--c1); color:var(--c1); }
+.lvl-btn.hard.on { background:var(--c1); color:#fff; }
+
+/* ─── WORD DISPLAY ─── */
+.word-display { background:rgba(255,255,255,.97); border-radius:24px; padding:28px 24px;
+  width:100%; max-width:760px; box-shadow:var(--shadow); text-align:center; min-height:200px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+.word-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#aaa; }
+.silabas-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; min-height:70px; align-items:center; }
+.sil-chip { font-family:'Fredoka One',cursive; font-size:clamp(28px,5vw,42px); padding:12px 20px;
+  border-radius:14px; color:#fff; transform:scale(0) rotate(-8deg);
+  transition:transform .45s cubic-bezier(.175,.885,.32,1.275); will-change:transform; }
+.sil-chip.show { transform:scale(1) rotate(0deg); }
+.sil-chip.c0{background:#ff6b6b;} .sil-chip.c1{background:#4ecdc4;} .sil-chip.c2{background:#ffe66d;color:#333;}
+.sil-chip.c3{background:#a29bfe;} .sil-chip.c4{background:#fd79a8;}
+.word-full { font-family:'Fredoka One',cursive; font-size:clamp(36px,6vw,52px); color:#1a1a2e;
+  opacity:0; transition:opacity .5s; }
+.word-full.show { opacity:1; }
+.sil-count { font-size:18px; color:#666; opacity:0; transition:opacity .5s; }
+.sil-count.show { opacity:1; }
+.sil-count strong { color:var(--c1); font-size:22px; }
+
+/* ─── CONTROLS ─── */
+.controls { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:760px; width:100%; }
+
+/* ─── TEACHER TIP ─── */
+.tip-box { background:#fff8e1; border:2px solid #ffe082; border-radius:14px; padding:14px 18px;
+  max-width:760px; width:100%; }
+.tip-box .tip-label { font-weight:800; font-size:14px; color:#e65100; margin-bottom:4px; }
+.tip-box .tip-text { font-size:14px; color:#6d4c0a; font-style:italic; }
+
+/* ─── XP BAR ─── */
+.xp-bar-wrap { width:100%; max-width:760px; margin-bottom:14px; }
+.xp-info { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.xp-info span { font-size:13px; color:rgba(255,255,255,.6); }
+.xp-info .xp-val { font-family:'Fredoka One',cursive; font-size:16px; color:var(--gold); }
+.xp-track { height:10px; background:rgba(255,255,255,.1); border-radius:50px; overflow:hidden; }
+.xp-fill { height:100%; background:linear-gradient(90deg,#f9ca24,#f0932b); border-radius:50px;
+  transition:width .6s cubic-bezier(.22,1,.36,1); }
+
+/* ─── BADGES ─── */
+.badges-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:760px; margin-bottom:10px; }
+.badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:50px;
+  padding:6px 14px; font-size:13px; color:rgba(255,255,255,.5); transition:all .3s; }
+.badge.earned { background:rgba(249,202,36,.15); border-color:var(--gold); color:var(--gold); }
+
+/* ─── MENU GRID ─── */
+.menu-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px;
+  width:100%; max-width:760px; }
+.menu-card { glass; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:22px 16px; text-align:center; cursor:pointer; transition:all .3s; }
+.menu-card:hover { background:rgba(255,255,255,.11); transform:translateY(-4px) scale(1.02); }
+.menu-card .mc-icon { font-size:44px; margin-bottom:10px; display:block; }
+.menu-card h3 { font-family:'Fredoka One',cursive; color:#fff; font-size:19px; margin-bottom:4px; }
+.menu-card p { color:rgba(255,255,255,.45); font-size:12px; }
+.menu-card .mc-badge { display:inline-block; margin-top:8px; background:var(--c1); color:#fff;
+  font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; }
+
+/* ─── GAME DO MILHÃO ─── */
+#screen-milhao { background:radial-gradient(ellipse at center, #1a1050 0%, #0d0d1a 100%); }
+.milhao-stage { width:100%; max-width:760px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.milhao-question-box { background:rgba(255,255,255,.07); border:2px solid rgba(162,155,254,.35); border-radius:22px;
+  padding:24px; width:100%; text-align:center; min-height:120px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px; }
+.milhao-categoria { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--c4); margin-bottom:4px; }
+.milhao-dica { font-size:clamp(17px,3vw,22px); color:#fff; font-weight:600; line-height:1.5; }
+.milhao-dica-num { font-family:'Fredoka One',cursive; font-size:13px; color:rgba(255,255,255,.4); }
+.milhao-palavra-hidden { font-family:'Fredoka One',cursive; font-size:clamp(30px,5vw,46px);
+  color:var(--gold); letter-spacing:6px; margin-top:6px; }
+.dashes { display:flex; gap:6px; justify-content:center; align-items:flex-end; }
+.dash { width:clamp(18px,3.5vw,28px); height:4px; background:rgba(255,255,255,.3); border-radius:4px; margin-top:10px; }
+.dash.filled { background:var(--gold); }
+
+.milhao-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; }
+.opt-btn { font-family:'Fredoka One',cursive; font-size:clamp(16px,2.5vw,20px); padding:16px 12px;
+  border-radius:16px; border:2px solid rgba(162,155,254,.3); background:rgba(162,155,254,.1);
+  color:#fff; cursor:pointer; transition:all .25s; text-align:center; display:flex; align-items:center; gap:8px; }
+.opt-btn:hover:not(.disabled) { background:rgba(162,155,254,.25); border-color:var(--c4); transform:scale(1.02); }
+.opt-btn .opt-letter { background:var(--c4); border-radius:50%; width:32px; height:32px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:15px; color:#fff; }
+.opt-btn.correct { background:rgba(78,205,196,.3); border-color:var(--c2); animation:pulse-correct .5s ease; }
+.opt-btn.wrong { background:rgba(255,107,107,.3); border-color:var(--c1); }
+.opt-btn.disabled { cursor:default; }
+@keyframes pulse-correct { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+.milhao-ajudas { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.ajuda-btn { font-family:'Fredoka One',cursive; font-size:14px; padding:8px 18px; border-radius:50px;
+  border:1px solid rgba(249,202,36,.35); background:rgba(249,202,36,.1); color:var(--gold); cursor:pointer; transition:all .25s; }
+.ajuda-btn:hover:not(.used) { background:rgba(249,202,36,.2); }
+.ajuda-btn.used { opacity:.35; cursor:default; border-color:rgba(255,255,255,.1); color:rgba(255,255,255,.3); }
+
+.milhao-progress { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
+.prog-dot { width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,.15); transition:all .3s; }
+.prog-dot.done { background:var(--c2); box-shadow:0 0 8px rgba(78,205,196,.6); }
+.prog-dot.current { background:var(--gold); box-shadow:0 0 12px rgba(249,202,36,.7); transform:scale(1.4); }
+
+/* ─── TIMES GAME ─── */
+.times-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:100%; max-width:760px; }
+.time-card { background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.1); border-radius:22px;
+  padding:22px 16px; text-align:center; transition:all .3s; }
+.time-card.leader { border-color:var(--gold); box-shadow:0 0 30px rgba(249,202,36,.2); }
+.time-emoji { font-size:46px; display:block; margin-bottom:8px; }
+.time-name { font-family:'Fredoka One',cursive; font-size:20px; color:#fff; margin-bottom:10px; }
+.time-pts { font-family:'Fredoka One',cursive; font-size:54px; color:var(--gold); line-height:1; }
+.time-lbl { color:rgba(255,255,255,.35); font-size:12px; margin-top:3px; }
+.time-btns { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+.btn-add-pt { background:var(--c2); color:#fff; border:none; border-radius:50px; padding:8px 20px;
+  cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; transition:all .25s; }
+.btn-add-pt:hover { filter:brightness(1.1); transform:scale(1.05); }
+.btn-rm-pt { background:rgba(255,100,100,.2); color:#ff9999; border:1px solid rgba(255,100,100,.25);
+  border-radius:50px; padding:8px 14px; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:700; font-size:15px; }
+
+.jogo-word-box { background:rgba(255,255,255,.08); border-radius:18px; padding:18px 28px; text-align:center;
+  width:100%; max-width:760px; }
+.jogo-word-box h4 { color:rgba(255,255,255,.45); font-size:12px; letter-spacing:3px; text-transform:uppercase; margin-bottom:8px; }
+.jogo-word-text { font-family:'Fredoka One',cursive; font-size:clamp(36px,7vw,52px); color:#fff; letter-spacing:4px; }
+
+/* ─── CONCEPT ─── */
+.concept-card { background:rgba(255,255,255,.97); border-radius:22px; padding:26px; width:100%; max-width:760px; margin-bottom:14px; }
+.rule-item { display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
+.rule-num { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Fredoka One',cursive; font-size:17px; color:#fff; flex-shrink:0; }
+.ex-sil { padding:5px 12px; border-radius:8px; font-family:'Fredoka One',cursive; font-size:18px; display:inline-block; margin:3px; }
+.ex-v { background:#ffe0e0; color:#c0392b; } .ex-c { background:#e0f0ff; color:#2980b9; }
+
+/* ─── TOAST ─── */
+.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px); z-index:9999;
+  background:rgba(0,0,0,.85); color:#fff; font-family:'Fredoka One',cursive; font-size:18px;
+  padding:14px 28px; border-radius:50px; transition:transform .4s cubic-bezier(.22,1,.36,1); pointer-events:none;
+  white-space:nowrap; border:1px solid rgba(255,255,255,.15); }
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+/* ─── WINNER OVERLAY ─── */
+.winner-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:9000; display:flex;
+  align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .3s; }
+.winner-overlay.show { opacity:1; pointer-events:all; }
+.winner-box { background:linear-gradient(135deg,#f9ca24,#f0932b); padding:36px 52px; border-radius:28px;
+  text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.6); transform:scale(.8); transition:transform .4s cubic-bezier(.175,.885,.32,1.275); }
+.winner-overlay.show .winner-box { transform:scale(1); }
+.winner-title { font-family:'Fredoka One',cursive; font-size:42px; color:#fff; }
+.winner-sub { color:rgba(255,255,255,.85); font-size:18px; margin:8px 0 20px; }
+
+/* ─── PARTICLES ─── */
+.particle { position:fixed; border-radius:50%; pointer-events:none; z-index:8000; animation:part-fly 1.8s ease-out forwards; }
+@keyframes part-fly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:var(--ptx) var(--pty) scale(0)} }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:520px){
+  .times-grid{grid-template-columns:1fr 1fr;}
+  .milhao-options{grid-template-columns:1fr;}
+  .menu-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-height:600px){
+  .screen{padding:8px;}
+  .word-display{min-height:140px;padding:18px;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+<div class="toast" id="toast"></div>
+<div class="winner-overlay" id="winner-overlay">
+  <div class="winner-box">
+    <div class="winner-title" id="winner-title">🏆 Time Vencedor!</div>
+    <div class="winner-sub" id="winner-sub">Parabéns a todos!</div>
+    <button class="btn btn-ghost" onclick="closeWinner()">Continuar Jogando!</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ TELA INÍCIO ═══════════════════ -->
+<div class="screen active" id="screen-inicio">
+  <div style="text-align:center;max-width:600px;">
+    <div style="font-size:13px;letter-spacing:3px;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:16px;">
+      🏫 E.M. Maria José Massena Matias
+    </div>
+    <div style="font-family:'Fredoka One',cursive;font-size:clamp(48px,10vw,90px);line-height:1;color:#fff;margin-bottom:6px;">
+      Sílabas
+    </div>
+    <div style="font-family:'Fredoka One',cursive;font-size:clamp(48px,10vw,90px);line-height:1;color:var(--gold);">
+      Mágicas!
+    </div>
+    <div id="sil-demo" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px 0;"></div>
+    <div style="color:rgba(255,255,255,.55);font-size:16px;margin-bottom:8px;">
+      Professor: <strong style="color:var(--gold);">Paulo Bispo</strong> 👨‍🏫
+    </div>
+    <div id="xp-global-display" style="color:rgba(255,255,255,.4);font-size:14px;margin-bottom:28px;"></div>
+    <button class="btn btn-primary" onclick="goTo('screen-menu')" style="font-size:22px;padding:18px 52px;">
+      ▶ Iniciar Aula!
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════ MENU ═══════════════════ -->
+<div class="screen" id="screen-menu">
+  <div style="font-family:'Fredoka One',cursive;font-size:34px;color:#fff;margin-bottom:6px;">O que fazemos hoje?</div>
+  <div style="color:rgba(255,255,255,.45);font-size:15px;margin-bottom:22px;">Escolha uma atividade, Prof. Paulo!</div>
+
+  <div class="xp-bar-wrap">
+    <div class="xp-info">
+      <span>⭐ Nível <span id="menu-level">1</span></span>
+      <span class="xp-val"><span id="menu-xp">0</span> XP</span>
+    </div>
+    <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="badges-row" id="badges-row">
+    <div class="badge" id="badge-first">🥇 Primeira Palma</div>
+    <div class="badge" id="badge-5">🔥 5 em Sequência</div>
+    <div class="badge" id="badge-milhao">💎 Craque do Milhão</div>
+    <div class="badge" id="badge-prof">👑 Professor Honorário</div>
+  </div>
+
+  <div class="menu-grid">
+    <div class="menu-card" onclick="goTo('screen-conceito')">
+      <span class="mc-icon">💡</span>
+      <h3>O que é Sílaba?</h3>
+      <p>Explicação visual</p>
+    </div>
+    <div class="menu-card" onclick="startDitado()">
+      <span class="mc-icon">🎯</span>
+      <h3>Ditado Interativo</h3>
+      <p>Revela sílaba a sílaba</p>
+    </div>
+    <div class="menu-card" onclick="goTo('screen-milhao')">
+      <span class="mc-icon">💰</span>
+      <h3>Jogo do Milhão</h3>
+      <p>Dicas + múltipla escolha</p>
+      <div class="mc-badge">NOVO!</div>
+    </div>
+    <div class="menu-card" onclick="goTo('screen-times')">
+      <span class="mc-icon">🏆</span>
+      <h3>Times</h3>
+      <p>Competição em grupo</p>
+    </div>
+  </div>
+  <button class="btn btn-ghost" style="margin-top:18px;font-size:14px;" onclick="goTo('screen-inicio')">← Início</button>
+</div>
+
+<!-- ═══════════════════ CONCEITO ═══════════════════ -->
+<div class="screen" id="screen-conceito" style="overflow-y:auto;justify-content:flex-start;padding-top:20px;">
+  <div class="hbar glass">
+    <span style="font-family:'Fredoka One',cursive;color:#fff;font-size:20px;">💡 O que é Sílaba?</span>
+    <button class="btn btn-ghost btn-small" onclick="goTo('screen-menu')">← Voltar</button>
+  </div>
+  <div class="concept-card" style="max-width:760px;">
+    <div style="font-family:'Fredoka One',cursive;font-size:24px;color:#1a1a2e;margin-bottom:14px;">🗣 Sílaba = cada "batidinha"!</div>
+    <p style="color:#555;font-size:16px;margin-bottom:16px;">Coloque a mão embaixo do queixo e fale: CA-SA. Sentiu? Cada vez que o queixo desce, é uma sílaba!</p>
+    <div style="background:#fff8e1;border-radius:14px;padding:18px;text-align:center;cursor:pointer;" onclick="demoConceito()">
+      <div style="font-size:15px;color:#777;margin-bottom:10px;">TOQUE PARA ANIMAR:</div>
+      <div style="display:flex;gap:14px;justify-content:center;">
+        <div class="sil-chip c0 show" id="cd0" style="transition:transform .15s;">CA</div>
+        <div class="sil-chip c1 show" id="cd1" style="transition:transform .15s;">SA</div>
+      </div>
+    </div>
+  </div>
+  <div class="concept-card" style="max-width:760px;">
+    <div style="font-family:'Fredoka One',cursive;font-size:22px;color:#1a1a2e;margin-bottom:16px;">📏 Tipos de palavras</div>
+    <div class="rule-item">
+      <div class="rule-num" style="background:#4ecdc4;">1</div>
+      <div><strong>Monossílaba</strong> — 1 sílaba<br>
+        <span class="ex-sil ex-v">PÃO</span><span class="ex-sil ex-v">MÃE</span><span class="ex-sil ex-v">SOL</span>
+      </div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num" style="background:#ffe66d;color:#333;">2</div>
+      <div><strong>Dissílaba</strong> — 2 sílabas<br>
+        <span class="ex-sil ex-c">CA</span><span class="ex-sil ex-v">SA</span>
+        <span style="margin:0 6px;color:#aaa;">|</span>
+        <span class="ex-sil ex-c">BO</span><span class="ex-sil ex-v">LA</span>
+      </div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num" style="background:#ff6b6b;">3</div>
+      <div><strong>Trissílaba</strong> — 3 sílabas<br>
+        <span class="ex-sil ex-c">CA</span><span class="ex-sil ex-v">DE</span><span class="ex-sil ex-c">LA</span>
+      </div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num" style="background:#a29bfe;">4+</div>
+      <div><strong>Polissílaba</strong> — 4 ou mais<br>
+        <span class="ex-sil ex-c">BO</span><span class="ex-sil ex-v">BO</span><span class="ex-sil ex-c">LE</span><span class="ex-sil ex-v">TA</span>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="startDitado()" style="margin-bottom:24px;">Praticar! 🎯</button>
+</div>
+
+<!-- ═══════════════════ DITADO ═══════════════════ -->
+<div class="screen" id="screen-ditado" style="justify-content:flex-start;padding-top:16px;overflow-y:auto;">
+  <div class="hbar glass" style="max-width:760px;">
+    <span style="font-family:'Fredoka One',cursive;color:#fff;font-size:20px;">🎯 Ditado Interativo</span>
+    <button class="btn btn-ghost btn-small" onclick="goTo('screen-menu')">← Voltar</button>
+  </div>
+
+  <div class="xp-bar-wrap" style="max-width:760px;">
+    <div class="xp-info">
+      <span style="color:rgba(255,255,255,.5);font-size:13px;">Sequência: <span id="streak-label" style="color:var(--gold);">0 🔥</span></span>
+      <span class="xp-val"><span id="ditado-xp">0</span> XP</span>
+    </div>
+    <div class="xp-track"><div class="xp-fill" id="ditado-xp-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="level-tabs">
+    <button class="lvl-btn easy on" onclick="setNivel('easy',this)">⭐ Fácil (2)</button>
+    <button class="lvl-btn mid" onclick="setNivel('mid',this)">⭐⭐ Médio (3)</button>
+    <button class="lvl-btn hard" onclick="setNivel('hard',this)">⭐⭐⭐ Difícil (4+)</button>
+  </div>
+
+  <div class="word-display" style="max-width:760px;">
+    <div class="word-label" id="d-num-lbl">PALAVRA 1 DE 10</div>
+    <div class="silabas-row" id="d-silabas-row"></div>
+    <div class="word-full" id="d-word-full"></div>
+    <div class="sil-count" id="d-sil-count"></div>
+  </div>
+
+  <div class="controls" style="margin-top:14px;">
+    <button class="btn btn-gold" onclick="doClap()" id="btn-clap">👏 Bater Palmas!</button>
+    <button class="btn btn-teal" onclick="revelarSilaba()" id="btn-revelar">▶ Revelar Sílaba</button>
+    <button class="btn btn-primary" onclick="nextWord()" id="btn-next" style="opacity:.4;pointer-events:none;">Próxima ➜</button>
+  </div>
+
+  <div class="tip-box" style="max-width:760px;margin-top:14px;">
+    <div class="tip-label">💬 Fala do Professor:</div>
+    <div class="tip-text" id="d-tip">"Pessoal, quantas sílabas vocês acham que tem? Vamos descobrir juntos!"</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ JOGO DO MILHÃO ═══════════════════ -->
+<div class="screen" id="screen-milhao" style="justify-content:flex-start;padding-top:16px;overflow-y:auto;">
+  <div class="hbar glass" style="max-width:760px;">
+    <span style="font-family:'Fredoka One',cursive;color:#fff;font-size:20px;">💰 Jogo do Milhão</span>
+    <button class="btn btn-ghost btn-small" onclick="goTo('screen-menu')">← Voltar</button>
+  </div>
+
+  <div class="milhao-stage">
+    <div class="milhao-progress" id="milhao-progress"></div>
+
+    <div class="milhao-question-box">
+      <div class="milhao-categoria" id="m-categoria">CATEGORIA</div>
+      <div class="milhao-dica-num" id="m-dica-num">DICA 1 DE 3</div>
+      <div class="milhao-dica" id="m-dica">Aguardando...</div>
+      <div class="milhao-palavra-hidden" id="m-palavra-hidden"></div>
+    </div>
+
+    <div class="milhao-options" id="milhao-opts"></div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="ajuda-btn" id="aj-proxdica" onclick="proximaDica()">💡 Próxima Dica</button>
+      <button class="ajuda-btn" id="aj-eliminar" onclick="ajudaEliminar()">🚫 Eliminar 2</button>
+      <button class="ajuda-btn" id="aj-plateia" onclick="ajudaPlateia()">👥 Plateia</button>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-purple btn-small" onclick="nextMilhao()">⏭ Próxima Palavra</button>
+      <button class="btn btn-ghost btn-small" onclick="resetMilhao()">🔄 Reiniciar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TIMES ═══════════════════ -->
+<div class="screen" id="screen-times" style="justify-content:flex-start;padding-top:16px;overflow-y:auto;">
+  <div class="hbar glass" style="max-width:760px;">
+    <span style="font-family:'Fredoka One',cursive;color:#fff;font-size:20px;">🏆 Jogo dos Times</span>
+    <button class="btn btn-ghost btn-small" onclick="goTo('screen-menu')">← Voltar</button>
+  </div>
+
+  <div style="color:rgba(255,255,255,.55);font-size:15px;margin-bottom:16px;text-align:center;max-width:600px;">
+    Divida a turma em 2 times! Separa certo = ganha ponto! Primeiro a 10 vence! 🎉
+  </div>
+
+  <div class="times-grid">
+    <div class="time-card" id="tc1">
+      <span class="time-emoji">🔴</span>
+      <div class="time-name">Time Vermelho</div>
+      <div class="time-pts" id="t1pts">0</div>
+      <div class="time-lbl">pontos</div>
+      <div class="time-btns">
+        <button class="btn-add-pt" onclick="addPt(1)">+1 ✓</button>
+        <button class="btn-rm-pt" onclick="rmPt(1)">−</button>
+      </div>
+    </div>
+    <div class="time-card" id="tc2">
+      <span class="time-emoji">🔵</span>
+      <div class="time-name">Time Azul</div>
+      <div class="time-pts" id="t2pts">0</div>
+      <div class="time-lbl">pontos</div>
+      <div class="time-btns">
+        <button class="btn-add-pt" onclick="addPt(2)">+1 ✓</button>
+        <button class="btn-rm-pt" onclick="rmPt(2)">−</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="jogo-word-box" style="margin-top:16px;">
+    <h4>Palavra da vez</h4>
+    <div class="jogo-word-text" id="jogo-word">?????</div>
+  </div>
+
+  <div id="jogo-resp" style="display:none;background:rgba(255,255,255,.08);border-radius:14px;padding:14px 20px;margin-top:12px;text-align:center;max-width:760px;width:100%;">
+    <div style="color:rgba(255,255,255,.4);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Resposta:</div>
+    <div id="jogo-resp-sils" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"></div>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;">
+    <button class="btn btn-gold" onclick="newJogoWord()">🎲 Nova Palavra</button>
+    <button class="btn btn-teal btn-small" onclick="showJogoResp()">✓ Mostrar Resposta</button>
+    <button class="btn btn-ghost btn-small" onclick="resetTimes()">🔄 Zerar</button>
+  </div>
+</div>
+
+<script>
+// ═══ AUDIO ENGINE (Web Audio API) ═══
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+function unlockAudio(){if(AC.state==='suspended')AC.resume();}
+document.addEventListener('click',unlockAudio,{once:true});
+
+function playTone(freq,dur,type='sine',gain=0.3){
+  try{
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.connect(g);g.connect(AC.destination);
+    o.frequency.value=freq;o.type=type;
+    g.gain.setValueAtTime(gain,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
+    o.start();o.stop(AC.currentTime+dur);
+  }catch(e){}
+}
+function playMelody(notes){notes.forEach(([f,d,t],i)=>setTimeout(()=>playTone(f,d,t||'sine',0.25),i*180));}
+const SND={
+  reveal:()=>playTone(880,.12,'sine',.2),
+  next:()=>playMelody([[523,.1],[659,.1],[784,.15]]),
+  clap:()=>{for(let i=0;i<5;i++)setTimeout(()=>playTone(200+Math.random()*100,.08,'sawtooth',.15),i*80);},
+  correct:()=>playMelody([[784,.1],[988,.1],[1175,.2]]),
+  wrong:()=>{playTone(200,.3,'sawtooth',.3);},
+  levelup:()=>playMelody([[523,.08],[659,.08],[784,.08],[1047,.2]]),
+  milhao_tick:()=>playTone(440,.05,'sine',.1),
+  milhao_win:()=>playMelody([[523,.1],[659,.1],[784,.1],[1047,.1],[1319,.25]]),
+  firework:()=>{for(let i=0;i<3;i++)setTimeout(()=>playMelody([[800+i*200,.05],[1000+i*200,.05],[1200+i*200,.15]]),i*120);},
+};
+
+// ═══ PARTICLES / CANVAS BG ═══
+const canvas=document.getElementById('canvas-bg');
+const ctx=canvas.getContext('2d');
+let stars=[];
+function resizeCanvas(){canvas.width=innerWidth;canvas.height=innerHeight;initStars();}
+function initStars(){stars=Array.from({length:60},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.5+.5,v:Math.random()*.3+.1,a:Math.random()*Math.PI*2}));}
+function animCanvas(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  stars.forEach(s=>{
+    s.y-=s.v;s.x+=Math.sin(s.a+Date.now()*.0005)*.2;
+    if(s.y<0){s.y=canvas.height;s.x=Math.random()*canvas.width;}
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${.15+Math.abs(Math.sin(Date.now()*.001+s.a))*.2})`;ctx.fill();
+  });
+  requestAnimationFrame(animCanvas);
+}
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();animCanvas();
+
+// ═══ GAMIFICATION STATE ═══
+let gXP=parseInt(localStorage.getItem('silabas_xp')||'0');
+let gLevel=parseInt(localStorage.getItem('silabas_level')||'1');
+let gBadges=JSON.parse(localStorage.getItem('silabas_badges')||'[]');
+let streak=0;
+
+function saveState(){localStorage.setItem('silabas_xp',gXP);localStorage.setItem('silabas_level',gLevel);localStorage.setItem('silabas_badges',JSON.stringify(gBadges));}
+function addXP(amt,label=''){
+  gXP+=amt;
+  const threshold=gLevel*100;
+  if(gXP>=threshold){gXP-=threshold;gLevel++;SND.levelup();showToast(`🎉 NÍVEL ${gLevel}! +${amt} XP`);dispararFogos(innerWidth/2,innerHeight/3);}
+  else{showToast(`+${amt} XP ${label}`);}
+  saveState();updateXPBars();
+}
+function updateXPBars(){
+  const pct=Math.min((gXP/(gLevel*100))*100,100);
+  document.querySelectorAll('.xp-fill').forEach(e=>e.style.width=pct+'%');
+  document.querySelectorAll('#menu-level').forEach(e=>e.textContent=gLevel);
+  document.querySelectorAll('#menu-xp').forEach(e=>e.textContent=gXP);
+  document.getElementById('ditado-xp').textContent=gXP;
+}
+function earnBadge(id,label){
+  if(!gBadges.includes(id)){gBadges.push(id);saveState();showToast('🏅 Conquista: '+label);
+    const el=document.getElementById('badge-'+id);if(el)el.classList.add('earned');}
+}
+function updateBadgesUI(){gBadges.forEach(id=>{const el=document.getElementById('badge-'+id);if(el)el.classList.add('earned');});}
+
+// ═══ NAVIGATION ═══
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  updateXPBars();updateBadgesUI();
+  if(id==='screen-menu'){document.getElementById('menu-level').textContent=gLevel;document.getElementById('menu-xp').textContent=gXP;}
+}
+
+// ═══ TOAST ═══
+let toastTimer;
+function showToast(msg,dur=2000){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ═══ FIREWORKS ═══
+function dispararFogos(cx,cy,n=25){
+  const cores=['#ff6b6b','#4ecdc4','#ffe66d','#a29bfe','#fd79a8','#f9ca24'];
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div');p.className='particle';
+    const angle=(i/n)*360;const dist=80+Math.random()*130;
+    const tx=Math.cos(angle*Math.PI/180)*dist+'px';const ty=Math.sin(angle*Math.PI/180)*dist+'px';
+    p.style.cssText=`left:${cx}px;top:${cy}px;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;background:${cores[i%cores.length]};--ptx:translateX(${tx});--pty:translateY(${ty});animation-delay:${Math.random()*.2}s;`;
+    document.body.appendChild(p);
+  }
+  setTimeout(()=>document.querySelectorAll('.particle').forEach(p=>p.remove()),2200);
+}
+
+// ═══ INTRO ANIMATION ═══
+function animateIntroChips(){
+  const demo=document.getElementById('sil-demo');
+  demo.innerHTML='';
+  const words=[{s:['SÍ','LA','BA'],c:['c0','c1','c2']},{s:['MA','GI','CA'],c:['c3','c4','c0']}];
+  let wi=0;
+  function showWord(){
+    demo.innerHTML='';
+    words[wi].s.forEach((s,i)=>{
+      const el=document.createElement('div');el.className='sil-chip '+words[wi].c[i];el.textContent=s;
+      demo.appendChild(el);setTimeout(()=>el.classList.add('show'),i*200+50);
+    });
+    wi=(wi+1)%words.length;
+  }
+  showWord();setInterval(showWord,2800);
+  const xpd=document.getElementById('xp-global-display');
+  if(gXP>0||gLevel>1)xpd.textContent=`Nível ${gLevel} · ${gXP} XP acumulado`;
+}
+animateIntroChips();
+
+// ═══ WORDS DATABASE ═══
+const WORDS={
+  easy:[
+    {p:'CASA',s:['CA','SA'],dicas:['Lugar onde moramos','Tem porta e janela','Lar'],cat:'OBJETOS'},
+    {p:'BOLA',s:['BO','LA'],dicas:['Usada em esportes','É redonda','Pode rolar'],cat:'ESPORTES'},
+    {p:'PATO',s:['PA','TO'],dicas:['Animal que nada','Faz "quá quá"','Ave'],cat:'ANIMAIS'},
+    {p:'FACA',s:['FA','CA'],dicas:['Usada na cozinha','Serve para cortar','Objeto de metal'],cat:'OBJETOS'},
+    {p:'LAGO',s:['LA','GO'],dicas:['Cheio de água','Na natureza','Peixes vivem lá'],cat:'NATUREZA'},
+    {p:'MESA',s:['ME','SA'],dicas:['Tem 4 pernas','Usada para comer','Móvel de madeira'],cat:'OBJETOS'},
+    {p:'VACA',s:['VA','CA'],dicas:['Animal de fazenda','Dá leite','Moo!'],cat:'ANIMAIS'},
+    {p:'SINO',s:['SI','NO'],dicas:['Faz barulho nas igrejas','Toca em festas','Objeto de metal'],cat:'OBJETOS'},
+    {p:'DEDO',s:['DE','DO'],dicas:['Parte da mão','Temos 10','Serve para apontar'],cat:'CORPO'},
+    {p:'MALA',s:['MA','LA'],dicas:['Usada em viagem','Guarda roupas','Tem alça'],cat:'OBJETOS'},
+  ],
+  mid:[
+    {p:'CADELA',s:['CA','DE','LA'],dicas:['Animal doméstico','Faz "au au"','Fêmea do cachorro'],cat:'ANIMAIS'},
+    {p:'BONECA',s:['BO','NE','CA'],dicas:['Brinquedo de criança','Tem cabelo','Parece uma pessoa'],cat:'BRINQUEDOS'},
+    {p:'JANELA',s:['JA','NE','LA'],dicas:['Tem vidro','Deixa entrar ar','Parte de uma casa'],cat:'OBJETOS'},
+    {p:'CANETA',s:['CA','NE','TA'],dicas:['Usada para escrever','Tem tinta','Objeto escolar'],cat:'ESCOLA'},
+    {p:'SAPATO',s:['SA','PA','TO'],dicas:['Usamos nos pés','Tem cadarço','Peça de vestuário'],cat:'ROUPAS'},
+    {p:'MENINO',s:['ME','NI','NO'],dicas:['Pessoa jovem','Do sexo masculino','Criança'],cat:'PESSOAS'},
+    {p:'GALINHA',s:['GA','LI','NHA'],dicas:['Ave de fazenda','Bota ovos','Canta de manhã'],cat:'ANIMAIS'},
+    {p:'CARINHO',s:['CA','RI','NHO'],dicas:['Sinal de afeto','Quando abraçamos','Sentimento bom'],cat:'SENTIMENTOS'},
+    {p:'CABELO',s:['CA','BE','LO'],dicas:['Fica na cabeça','Pode ser liso ou crespo','Parte do corpo'],cat:'CORPO'},
+    {p:'GIRAFAS',s:['GI','RA','FAS'],dicas:['Animal africano','Pescoço comprido','Come folhas de árvore'],cat:'ANIMAIS'},
+  ],
+  hard:[
+    {p:'BORBOLETA',s:['BOR','BO','LE','TA'],dicas:['Inseto colorido','Tem asas','Sai da crisálida'],cat:'NATUREZA'},
+    {p:'TELEVISÃO',s:['TE','LE','VI','SÃO'],dicas:['Aparelho eletrônico','Transmite imagens','Fica na sala'],cat:'TECNOLOGIA'},
+    {p:'PROFESSORA',s:['PRO','FES','SO','RA'],dicas:['Trabalha na escola','Ensina alunos','Prof. Paulo é um...'],cat:'PROFISSÕES'},
+    {p:'FELICIDADE',s:['FE','LI','CI','DA','DE'],dicas:['Sentimento positivo','Quando estamos bem','Oposto de tristeza'],cat:'SENTIMENTOS'},
+    {p:'BIBLIOTECA',s:['BI','BLI','O','TE','CA'],dicas:['Lugar de livros','Lugar de estudo','Silêncio é importante'],cat:'ESCOLA'},
+    {p:'COMPUTADOR',s:['COM','PU','TA','DOR'],dicas:['Máquina eletrônica','Tem teclado e tela','Usado no trabalho'],cat:'TECNOLOGIA'},
+    {p:'MARAVILHOSO',s:['MA','RA','VI','LHO','SO'],dicas:['Algo muito bom','Sinônimo de incrível','Como essa aula!'],cat:'ADJETIVOS'},
+    {p:'CURIOSIDADE',s:['CU','RI','O','SI','DA','DE'],dicas:['Vontade de saber','Motor do aprendizado','Quem tem aprende mais'],cat:'SENTIMENTOS'},
+  ]
+};
+
+// ═══ DITADO INTERATIVO ═══
+let dNivel='easy', dWords=[], dIdx=0, dSilIdx=0, dComplete=false;
+
+function shuffleArr(a){return a.sort(()=>Math.random()-.5);}
+function startDitado(){dSilIdx=0;dComplete=false;embaralharDitado();goTo('screen-ditado');loadWord();}
+function embaralharDitado(){dWords=shuffleArr([...WORDS[dNivel]]);}
+function setNivel(n,btn){
+  dNivel=n;dIdx=0;
+  document.querySelectorAll('.lvl-btn').forEach(b=>{b.classList.remove('on');});
+  btn.classList.add('on');
+  embaralharDitado();loadWord();
+}
+function loadWord(){
+  dSilIdx=0;dComplete=false;
+  const w=dWords[dIdx];
+  document.getElementById('d-num-lbl').textContent=`PALAVRA ${dIdx+1} DE ${dWords.length}`;
+  const row=document.getElementById('d-silabas-row');
+  row.innerHTML='';
+  w.s.forEach((s,i)=>{
+    const el=document.createElement('div');
+    el.className=`sil-chip c${i%5}`;
+    el.id=`dsil-${i}`;el.textContent=s;
+    row.appendChild(el);
+  });
+  const wf=document.getElementById('d-word-full');
+  wf.textContent=w.p;
+  wf.classList.remove('show');
+  document.getElementById('d-sil-count').classList.remove('show');
+  const nb=document.getElementById('btn-next');
+  nb.style.opacity='.4';nb.style.pointerEvents='none';
+  const tips=["\"Pessoal, quantas sílabas vocês acham? Coloquem a mão no queixo!\"","\"Antes de revelar, tentem adivinhar em voz alta!\"","\"Bata palmas com cada parte da palavra!\""];
+  document.getElementById('d-tip').textContent=tips[Math.floor(Math.random()*tips.length)];
+}
+function revelarSilaba(){
+  const w=dWords[dIdx];
+  if(dComplete)return;
+  if(dSilIdx<w.s.length){
+    const el=document.getElementById(`dsil-${dSilIdx}`);
+    if(el){el.classList.add('show');SND.reveal();}
+    dSilIdx++;
+    document.getElementById('d-tip').textContent=`"Repitam: ${w.s.slice(0,dSilIdx).join(' - ')}"`;
+    if(dSilIdx===w.s.length){
+      dComplete=true;
+      setTimeout(()=>{
+        const wf=document.getElementById('d-word-full');
+        wf.classList.add('show');
+        const names=['monossílaba','dissílaba','trissílaba','polissílaba','polissílaba','polissílaba'];
+        const nm=names[Math.min(w.s.length-1,5)];
+        const sc=document.getElementById('d-sil-count');
+        sc.innerHTML=`<strong>${w.s.length}</strong> sílaba${w.s.length>1?'s':''} — <strong>${nm}!</strong>`;
+        sc.classList.add('show');
+        const nb=document.getElementById('btn-next');nb.style.opacity='1';nb.style.pointerEvents='all';
+        SND.correct();dispararFogos(innerWidth/2,innerHeight/2,15);
+        streak++;document.getElementById('streak-label').textContent=streak+'🔥';
+        addXP(dNivel==='easy'?10:dNivel==='mid'?15:20,'');
+        if(streak===1)earnBadge('first','Primeira Palma');
+        if(streak>=5)earnBadge('5','5 em Sequência');
+        document.getElementById('d-tip').textContent=`"Quantas sílabas? ${w.s.length}! Isso é uma ${nm}! Quem consegue usar essa palavra numa frase?"`;
+      },300);
+    }
+  }
+}
+function doClap(){
+  SND.clap();
+  const container=document.createElement('div');
+  container.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5000;';
+  document.body.appendChild(container);
+  for(let i=0;i<8;i++){setTimeout(()=>{const e=document.createElement('div');
+    e.textContent='👏';e.style.cssText=`position:absolute;font-size:36px;left:${10+Math.random()*80}%;bottom:20px;animation:part-fly 1.4s ease forwards;--ptx:translateX(${(Math.random()-.5)*60}px);--pty:translateY(-${150+Math.random()*100}px);animation-delay:${i*80}ms;`;
+    container.appendChild(e);},i*80);}
+  setTimeout(()=>container.remove(),2000);
+  revelarSilaba();
+}
+function nextWord(){
+  if(!dComplete)return;
+  dIdx=(dIdx+1)%dWords.length;
+  dSilIdx=0;dComplete=false;
+  // Reset all sil-chips BEFORE loading
+  document.getElementById('d-silabas-row').innerHTML='';
+  loadWord();
+  SND.next();
+}
+function demoConceito(){['cd0','cd1'].forEach((id,i)=>setTimeout(()=>{const e=document.getElementById(id);e.style.transform='scale(1.4) rotate(5deg)';setTimeout(()=>e.style.transform='',250);SND.reveal();},i*380));}
+
+// ═══ JOGO DO MILHÃO ═══
+const MILHAO_PERGUNTAS=[];
+Object.entries(WORDS).forEach(([nivel,arr])=>arr.forEach(w=>MILHAO_PERGUNTAS.push({...w,nivel})));
+shuffleArr(MILHAO_PERGUNTAS);
+
+let mIdx=0,mDicaIdx=0,mRespondido=false,mTotal=0,mCertas=0;
+let mAjudaEliminar=true,mAjudaPlateia=true;
+
+function buildMilhaoOptions(w,correct){
+  const wrong=shuffleArr(MILHAO_PERGUNTAS.filter(x=>x.p!==w.p)).slice(0,3).map(x=>x.p);
+  const opts=shuffleArr([correct,...wrong]);return opts;
+}
+function loadMilhao(){
+  if(mIdx>=MILHAO_PERGUNTAS.length){mIdx=0;shuffleArr(MILHAO_PERGUNTAS);}
+  const w=MILHAO_PERGUNTAS[mIdx];mDicaIdx=0;mRespondido=false;
+  mAjudaEliminar=true;mAjudaPlateia=true;
+  document.getElementById('aj-eliminar').classList.remove('used');
+  document.getElementById('aj-plateia').classList.remove('used');
+  document.getElementById('aj-proxdica').classList.remove('used');
+  document.getElementById('m-categoria').textContent=w.cat;
+  document.getElementById('m-dica-num').textContent=`DICA 1 DE ${w.dicas.length}`;
+  document.getElementById('m-dica').textContent=w.dicas[0];
+  const dashes=Array.from(w.p).map(c=>c===' '?' ':'_').join('');
+  const dhidden=document.getElementById('m-palavra-hidden');
+  dhidden.innerHTML='<div class="dashes">'+Array.from(w.p).map(c=>c===' '?'<span style="width:14px;display:inline-block;"></span>':`<div class="dash"></div>`).join('')+'</div>';
+  const opts=buildMilhaoOptions(w,w.p);
+  const letters=['A','B','C','D'];
+  const box=document.getElementById('milhao-opts');
+  box.innerHTML='';
+  opts.forEach((opt,i)=>{
+    const b=document.createElement('button');b.className='opt-btn';
+    b.innerHTML=`<span class="opt-letter">${letters[i]}</span>${opt}`;
+    b.onclick=()=>answerMilhao(b,opt,w);
+    box.appendChild(b);
+  });
+  updateProgresso();SND.milhao_tick();
+}
+function updateProgresso(){
+  const prog=document.getElementById('milhao-progress');
+  prog.innerHTML='';
+  MILHAO_PERGUNTAS.slice(0,10).forEach((_,i)=>{
+    const d=document.createElement('div');d.className='prog-dot';
+    if(i<mCertas)d.classList.add('done');
+    if(i===mCertas)d.classList.add('current');
+    prog.appendChild(d);
+  });
+}
+function answerMilhao(btn,opt,w){
+  if(mRespondido)return;mRespondido=true;
+  document.querySelectorAll('.opt-btn').forEach(b=>b.classList.add('disabled'));
+  if(opt===w.p){
+    btn.classList.add('correct');SND.milhao_win();mCertas++;
+    dispararFogos(innerWidth/2,innerHeight/3,20);
+    showToast('🎉 CORRETO! +25 XP');addXP(25,'💰');
+    earnBadge('milhao','Craque do Milhão');
+    if(mCertas>=5)earnBadge('prof','Professor Honorário');
+    // reveal letters
+    const dhidden=document.getElementById('m-palavra-hidden');
+    dhidden.innerHTML='<div class="dashes">'+Array.from(w.p).map(c=>c===' '?'<span style="width:14px;display:inline-block;"></span>':`<div class="dash filled"></div>`).join('')+'</div>';
+    setTimeout(()=>{dhidden.innerHTML='<span style="font-family:Fredoka One,cursive;font-size:38px;color:var(--gold)">'+w.p+'</span>';},600);
+  } else {
+    btn.classList.add('wrong');SND.wrong();
+    document.querySelectorAll('.opt-btn').forEach(b=>{if(b.textContent.includes(w.p))b.classList.add('correct');});
+    showToast('❌ Era: '+w.p,3000);
+  }
+}
+function proximaDica(){
+  const w=MILHAO_PERGUNTAS[mIdx];
+  if(mDicaIdx<w.dicas.length-1){
+    mDicaIdx++;
+    document.getElementById('m-dica').textContent=w.dicas[mDicaIdx];
+    document.getElementById('m-dica-num').textContent=`DICA ${mDicaIdx+1} DE ${w.dicas.length}`;
+    SND.milhao_tick();
+    if(mDicaIdx===w.dicas.length-1)document.getElementById('aj-proxdica').classList.add('used');
+  }
+}
+function ajudaEliminar(){
+  if(!mAjudaEliminar||mRespondido)return;mAjudaEliminar=false;
+  document.getElementById('aj-eliminar').classList.add('used');
+  const w=MILHAO_PERGUNTAS[mIdx];
+  let eliminated=0;
+  document.querySelectorAll('.opt-btn').forEach(b=>{
+    if(!b.textContent.includes(w.p)&&eliminated<2){
+      b.style.opacity='.2';b.classList.add('disabled');eliminated++;
+    }
+  });
+  showToast('🚫 2 opções eliminadas!');
+}
+function ajudaPlateia(){
+  if(!mAjudaPlateia||mRespondido)return;mAjudaPlateia=false;
+  document.getElementById('aj-plateia').classList.add('used');
+  const w=MILHAO_PERGUNTAS[mIdx];
+  showToast(`👥 A plateia escolhe: ${w.p}!`,3000);
+}
+function nextMilhao(){mIdx++;loadMilhao();}
+function resetMilhao(){mIdx=0;mCertas=0;shuffleArr(MILHAO_PERGUNTAS);loadMilhao();}
+
+// ═══ TIMES ═══
+let tPts=[0,0];
+const jogoWords=[...WORDS.easy,...WORDS.mid,...WORDS.hard];
+let jIdx=0;shuffleArr(jogoWords);
+function newJogoWord(){jIdx=(jIdx+1)%jogoWords.length;document.getElementById('jogo-word').textContent=jogoWords[jIdx].p;document.getElementById('jogo-resp').style.display='none';}
+function showJogoResp(){
+  const w=jogoWords[jIdx];
+  const box=document.getElementById('jogo-resp-sils');box.innerHTML='';
+  w.s.forEach((s,i)=>{const sp=document.createElement('div');sp.className=`sil-chip c${i%5} show`;sp.textContent=s;box.appendChild(sp);});
+  document.getElementById('jogo-resp').style.display='block';SND.reveal();
+}
+function addPt(t){
+  tPts[t-1]++;document.getElementById(`t${t}pts`).textContent=tPts[t-1];
+  SND.correct();dispararFogos(t===1?innerWidth*.25:innerWidth*.75,innerHeight/2,10);
+  if(tPts[t-1]>tPts[t===1?1:0]){document.getElementById(`tc${t}`).classList.add('leader');document.getElementById(`tc${t===1?2:1}`).classList.remove('leader');}
+  if(tPts[t-1]===10){
+    const names=['Vermelho','Azul'];
+    document.getElementById('winner-title').textContent=`🏆 Time ${names[t-1]} Venceu!`;
+    document.getElementById('winner-sub').textContent='Parabéns a todos pela participação!';
+    document.getElementById('winner-overlay').classList.add('show');
+    SND.firework();dispararFogos(innerWidth/2,innerHeight/3,40);addXP(50,'🏆');
+  }
+  newJogoWord();
+}
+function rmPt(t){if(tPts[t-1]>0){tPts[t-1]--;document.getElementById(`t${t}pts`).textContent=tPts[t-1];}}
+function resetTimes(){tPts=[0,0];['t1pts','t2pts'].forEach((id,i)=>document.getElementById(id).textContent='0');['tc1','tc2'].forEach(id=>document.getElementById(id).classList.remove('leader'));document.getElementById('jogo-resp').style.display='none';jIdx=0;document.getElementById('jogo-word').textContent=jogoWords[0].p;}
+function closeWinner(){document.getElementById('winner-overlay').classList.remove('show');}
+
+// ═══ INIT ═══
+loadMilhao();
+updateXPBars();updateBadgesUI();
+document.getElementById('jogo-word').textContent=jogoWords[0].p;
+</script>
+</body>
+</html>
